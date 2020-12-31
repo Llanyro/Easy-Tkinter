@@ -8,13 +8,14 @@ from tkinter import messagebox
 
 class GeneralVentana:
     __name: str
-    __item_dict: dict
+    __object_list: list
     __ventana: Tk
     __menubar = None
+    __dict_keys: list = ("type", "item")
 
     def __init__(self, titulo: str):
         self.__name = titulo
-        self.__item_dict = {}
+        self.__object_list = []
         self.__ventana = Tk()
         self.__ventana.title(titulo)
         self.__ventana.protocol("WM_DELETE_WINDOW", self.closeWindow)
@@ -29,9 +30,19 @@ class GeneralVentana:
 
     def addItem(self, item):
         if type(item) == GeneralNotebook or issubclass(item.__class__, GeneralNotebook):
-            self.__item_dict.update({"type": "notebook", "item": item})
+            self.__object_list.append({self.__dict_keys[0]: "notebook", self.__dict_keys[1]: item})
         elif type(item) == GeneralDivTab or issubclass(item.__class__, GeneralDivTab):
-            self.__item_dict.update({"type": "div", "item": item})
+            self.__object_list.append({self.__dict_keys[0]: "div", self.__dict_keys[1]: item})
+        else:
+            print(item.__class__, "No añadido")
+
+    def get(self, id: str):
+        item = None
+        for i in self.__object_list:
+            if i[self.__dict_keys[1]].name == id:
+                item = i[self.__dict_keys[1]]
+                break
+        return item
 
     @property
     def nucleo(self):
@@ -116,7 +127,7 @@ class GeneralTab:
         if type(item) == GeneralDivTab or issubclass(item.__class__, GeneralDivTab):
             self.__div_list.append(item)
         else:
-            print(item.__class__)
+            print(item.__class__, "No añadido")
 
     def get(self, id: str):
         item = None
@@ -171,7 +182,8 @@ class GeneralDivTab:
                 break
         return item
 
-    def addItem(self, item):
+    def addItem(self, item) -> bool:
+        result = True
         if type(item) == GeneralButton or issubclass(item.__class__, GeneralButton):
             self.__object_list.append({self.__dict_keys[0]: "button", self.__dict_keys[1]: item})
         elif type(item) == GeneralTextAreaScrollTab or issubclass(item.__class__, GeneralTextAreaScrollTab):
@@ -190,8 +202,23 @@ class GeneralDivTab:
             self.__object_list.append({self.__dict_keys[0]: "photo", self.__dict_keys[1]: item})
         elif type(item) == GeneralProgressBar or issubclass(item.__class__, GeneralProgressBar):
             self.__object_list.append({self.__dict_keys[0]: "progressbar", self.__dict_keys[1]: item})
+        elif type(item) == GeneralListBox or issubclass(item.__class__, GeneralListBox):
+            self.__object_list.append({self.__dict_keys[0]: "listbox", self.__dict_keys[1]: item})
         else:
             print(item.__class__)
+            result = False
+        return result
+
+    def deleteItem(self, id: str) -> bool:
+        result = False
+        # Search Item
+        for i in self.__object_list:
+            if i[self.__dict_keys[1]].name == id:
+                # Delete item
+                del i
+                result = True
+                break
+        return result
 
     @property
     def name(self):
@@ -515,13 +542,16 @@ class GeneralListBox:
     #__elements: int
 
     def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int,
-                 columnspan: int = 1, rowspan: int = 1):
+                 columnspan: int = 1, rowspan: int = 1, command=None):
         #self.__elements = 0
         self.__parent = parent
         self.__name = name
         self.__parent.addItem(self)
         self.__list = Listbox(self.__parent.nucleo)
         self.__list.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
+        if command is not None:
+            self.__list.bind("<<ListboxSelect>>", command)
+
 
     # region Funciones
     @property
