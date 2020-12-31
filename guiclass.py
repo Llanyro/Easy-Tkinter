@@ -1,6 +1,9 @@
+from io import BytesIO
 from tkinter import TOP, Button, Tk, E, W, N, S, messagebox, Menu, Scrollbar, Text, RIGHT, Y, LEFT, END, DISABLED, \
-    NORMAL, Entry, Checkbutton, IntVar, PhotoImage
-from tkinter.ttk import Notebook, Frame, Combobox
+    NORMAL, Entry, Checkbutton, IntVar, PhotoImage, Label, VERTICAL, HORIZONTAL, Listbox
+from tkinter.ttk import Notebook, Frame, Combobox, Progressbar
+from PIL import ImageTk, Image
+from tkinter import messagebox
 
 
 class GeneralVentana:
@@ -25,8 +28,10 @@ class GeneralVentana:
             self.__ventana.destroy()
 
     def addItem(self, item):
-        if type(item) == GeneralNotebook:
+        if type(item) == GeneralNotebook or issubclass(item.__class__, GeneralNotebook):
             self.__item_dict.update({"type": "notebook", "item": item})
+        elif type(item) == GeneralDivTab or issubclass(item.__class__, GeneralDivTab):
+            self.__item_dict.update({"type": "div", "item": item})
 
     @property
     def nucleo(self):
@@ -37,10 +42,6 @@ class GeneralVentana:
             self.__menubar = menu
 
 
-# region Objetos Individuales Linkeables
-
-
-# endregion
 # region Rama Tabs
 class GeneralNotebook:
     __parent = None
@@ -60,6 +61,7 @@ class GeneralNotebook:
         self.__notebook.grid(row=row, column=column, sticky=E+W+N+S)
         self.__parent.nucleo.bind("<Configure>", self.conf)
 
+    # region Funciones
     def conf(self, event):
         # print(event)
         alto = self.__parent.nucleo.winfo_height()
@@ -91,6 +93,8 @@ class GeneralNotebook:
     @property
     def parent(self):
         return self.__parent
+
+    # endregion
 
 
 class GeneralTab:
@@ -136,7 +140,7 @@ class GeneralTab:
 
 
 class GeneralDivTab:
-    __parent: GeneralTab
+    __parent = None
     __name: str
     __row: int
     __col: int
@@ -144,7 +148,11 @@ class GeneralDivTab:
     __div: Frame
     __dict_keys: list = ("type", "item")
 
-    def __init__(self, name: str, parent: GeneralTab, row: int = 0, col: int = 0):
+    def __init__(self, name: str, parent, row: int = 0, col: int = 0, columnspan: int = 1, rowspan: int = 1):
+        if type(parent) != GeneralTab and issubclass(parent.__class__, GeneralTab) is not True and \
+                type(parent) != GeneralVentana and issubclass(parent.__class__, GeneralVentana) is not True:
+            raise Exception
+
         self.__parent = parent
         self.__name = name
         self.__row = row
@@ -152,7 +160,7 @@ class GeneralDivTab:
         self.__object_list = []
         self.__parent.addItem(self)
         self.__div = Frame(parent.nucleo)
-        self.__div.grid(row=self.__row, column=self.__col, sticky=N+S+E+W)
+        self.__div.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
 
     # region Funciones Div
     def get(self, id: str):
@@ -176,6 +184,12 @@ class GeneralDivTab:
             self.__object_list.append({self.__dict_keys[0]: "check_box", self.__dict_keys[1]: item})
         elif type(item) == GeneralNotebook or issubclass(item.__class__, GeneralNotebook):
             self.__object_list.append({self.__dict_keys[0]: "notebook", self.__dict_keys[1]: item})
+        elif type(item) == GeneralLabel or issubclass(item.__class__, GeneralLabel):
+            self.__object_list.append({self.__dict_keys[0]: "label", self.__dict_keys[1]: item})
+        elif type(item) == GeneralPhoto or issubclass(item.__class__, GeneralPhoto):
+            self.__object_list.append({self.__dict_keys[0]: "photo", self.__dict_keys[1]: item})
+        elif type(item) == GeneralProgressBar or issubclass(item.__class__, GeneralProgressBar):
+            self.__object_list.append({self.__dict_keys[0]: "progressbar", self.__dict_keys[1]: item})
         else:
             print(item.__class__)
 
@@ -217,7 +231,7 @@ class GeneralTextAreaScrollTab:
     __scroll: Scrollbar = None
 
     # def __init__(self, name: str, parent: GeneralDivTab, fill=Y, height=4, width=50):
-    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int, columnspan: int):
+    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int, columnspan: int = 1, rowspan: int = 1):
         self.__name = name
         self.__parent = parent
         self.__scroll = Scrollbar(self.__parent.nucleo)
@@ -228,8 +242,8 @@ class GeneralTextAreaScrollTab:
         # self.__text.rowconfigure(self.__parent.nucleo, 0, weight=1)
         # self.__text.columnconfigure(self.__parent.nucleo, 0, weight=1)
 
-        self.__text.grid(row=row, column=col, columnspan=columnspan, sticky=N+S+E+W)
-        self.__scroll.grid(row=row, column=col + columnspan + 1, sticky=N+S)
+        self.__text.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
+        self.__scroll.grid(row=row, column=col + columnspan + 1, rowspan=rowspan, sticky=N+S)
 
         self.__scroll.config(command=self.__text.yview)
         self.__text.config(yscrollcommand=self.__scroll.set)
@@ -272,13 +286,12 @@ class GeneralEntradaTexto:
     __name: str
     __text: Entry
 
-    # def __init__(self, name: str, parent: GeneralDivTab, fill=Y, height=4, width=50, side=RIGHT):
-    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int, height=4, width=50, columnspan=1):
+    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int,
+                 height=4, width=50, columnspan: int = 1, rowspan: int = 1):
         self.__name = name
         self.__parent = parent
         self.__text = Entry(self.__parent.nucleo)
-        # self.__text.pack(side=side, fill=fill)
-        self.__text.grid(row=row, column=col, columnspan=columnspan, sticky=N+S+E+W)
+        self.__text.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
         self.__parent.addItem(self)
 
     # region Funciones
@@ -309,12 +322,13 @@ class GeneralButton:
     __name: str
     __button: Button
 
-    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int, command=None):
+    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int,
+                 command=None, columnspan: int = 1, rowspan: int = 1):
         self.__parent = parent
         self.__name = name
         self.__parent.addItem(self)
         self.__button = Button(parent.nucleo, text=self.__name, command=command)
-        self.__button.grid(row=row, column=col)
+        self.__button.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
 
     # region Funciones
     @property
@@ -337,12 +351,13 @@ class GeneralCombox:
     __name: str
     __box: Combobox
 
-    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int, values: list):
+    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int, values: list,
+                 columnspan: int = 1, rowspan: int = 1):
         self.__parent = parent
         self.__name = name
         self.__parent.addItem(self)
         self.__box = Combobox(self.parent.nucleo, values=values)
-        self.__box.grid(row=row, column=col)
+        self.__box.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
         self.__box.current(0)
 
     # region Funciones
@@ -373,13 +388,14 @@ class GeneralCheckBox:
     __box: Checkbutton
     __variable: IntVar
 
-    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int):
+    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int,
+                 columnspan: int = 1, rowspan: int = 1):
         self.__parent = parent
         self.__name = name
         self.__parent.addItem(self)
         self.__variable = IntVar()
         self.__box = Checkbutton(self.__parent.nucleo, text=name, variable=self.__variable, onvalue=1, offvalue=0)
-        self.__box.grid(row=row, column=col)
+        self.__box.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
 
     # region Funciones
     @property
@@ -398,6 +414,147 @@ class GeneralCheckBox:
         return self.__variable
 
     # endregion
+
+
+class GeneralLabel:
+    __parent: GeneralDivTab
+    __name: str
+    __label: Label
+
+    def __init__(self, name: str, parent: GeneralDivTab, text: str, row: int, col: int,
+                 columnspan: int = 1, rowspan: int = 1):
+        self.__parent = parent
+        self.__name = name
+        self.__parent.addItem(self)
+        self.__label = Label(self.__parent.nucleo, text=text)
+        self.__label.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
+
+    # region Funciones
+    @property
+    def parent(self):
+        return self.__parent
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def nucleo(self):
+        return self.__label
+
+    # endregion
+
+
+class GeneralPhoto:
+    __parent: GeneralDivTab
+    __name: str
+    __image = None
+    __label: Label
+
+    def __init__(self, name: str, parent: GeneralDivTab, content: bytes, row: int, col: int,
+                 columnspan: int = 1, rowspan: int = 1, width: int = 300, height: int = 300):
+        self.__parent = parent
+        self.__name = name
+        self.__parent.addItem(self)
+        self.__image = ImageTk.PhotoImage(Image.open(BytesIO(content)).resize((height, width), Image.ANTIALIAS))
+        self.__label = Label(self.__parent.nucleo, image=self.__image, height=height, width=width)
+        self.__label.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
+
+    # region Funciones
+    @property
+    def parent(self):
+        return self.__parent
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def nucleo(self):
+        return self.__label
+
+    # endregion
+
+
+class GeneralProgressBar:
+    __parent: GeneralDivTab
+    __name: str
+    __bar: Progressbar
+
+    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int,
+                 columnspan: int = 1, rowspan: int = 1):
+        self.__parent = parent
+        self.__name = name
+        self.__parent.addItem(self)
+        self.__bar = Progressbar(self.__parent.nucleo, orient=HORIZONTAL)
+        self.__bar.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
+
+    # region Funciones
+    @property
+    def parent(self):
+        return self.__parent
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def nucleo(self):
+        return self.__bar
+
+    def setProgress(self, prog: int):
+        self.__bar.step(prog)
+
+    # endregion
+
+
+class GeneralListBox:
+    __parent: GeneralDivTab
+    __name: str
+    __list: Listbox
+    #__elements: int
+
+    def __init__(self, name: str, parent: GeneralDivTab, row: int, col: int,
+                 columnspan: int = 1, rowspan: int = 1):
+        #self.__elements = 0
+        self.__parent = parent
+        self.__name = name
+        self.__parent.addItem(self)
+        self.__list = Listbox(self.__parent.nucleo)
+        self.__list.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
+
+    # region Funciones
+    @property
+    def parent(self):
+        return self.__parent
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def nucleo(self):
+        return self.__list
+
+    def addElement(self, value: str):
+        self.__list.insert(self.__list.size(), value)
+        #self.__elements += 1
+
+    def insertElement(self, value: str, pos: int):
+        self.__list.insert(pos, value)
+        #self.__elements += 1
+
+    def removeElement(self, pos: int):
+        self.__list.delete(pos)
+        #self.__elements += 1
+
+    # endregion
+
+
+
+
+
+
 
 
 # endregion
@@ -443,7 +600,6 @@ class GeneralMenu:
 
 
 # endregion
-
 
 """v = GeneralVentana("Ventana1")
 v.ventana.geometry("800x400")
