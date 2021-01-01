@@ -9,47 +9,37 @@ from rx.core import Observer
 from rx import from_list
 
 
-async def func(url: str, u: str, root: str, urlob: Observer):
-    result = None
-    urlfin = None
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                result = resp.content
-                urlfin = url
-    except:
-        url2 = UrlCntroller.prepararUrl(url, u)
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url2) as resp:
-                    result = resp.content
-                    urlfin = url2
-        except:
-            url2 = UrlCntroller.prepararUrl(url, root)
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url2) as resp:
-                        result = resp.content
-                        urlfin = url2
-            except:
-                pass
-    if result is not None:
-        print(urlfin)
-        from_list([(urlfin, result)]).subscribe(urlob)
-    return result is not None
-
-
-async def getAsync(u: str, urlob: Observer):
-    dom, root = UrlCntroller.urlRootDom(u)
+def getUrls(u: str) -> list:
+    web = UrlCntroller.getOrUrl(u)
     r = get(u)
-    urllist: list = findall("src=\"(.+?)\"", r.text)
+    urllist: list = []
+    urllist += (findall("src=\"(.+?)\"", r.text))
+
     i: int = 0
     while i < urllist.__len__():
         if urllist[i].__contains__(".jpg") is False and urllist[i].__contains__(".png") is False:
             del urllist[i]
         else:
+            urllist[i] = UrlCntroller.prepararUrl2(urllist[i], web)
             i += 1
-    return await asyncio.gather(*(func(url, u, root, urlob) for url in urllist))
+    return urllist
+
+
+async def func(url: str, urlob: Observer) -> None:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            result = await resp.content.read()
+            if result is not None:
+                print(url)
+                from_list([(url, result)]).subscribe(urlob)
+
+
+async def getAsync(urls: list, urlob: Observer) -> None:
+    tasks = []
+    for url in urls:
+        task = asyncio.create_task(func(url, urlob))
+        tasks.append(task)
+    await asyncio.gather(*tasks)
 
 
 class DivSuperior(GeneralDivTab):
@@ -68,9 +58,9 @@ class DivSuperior(GeneralDivTab):
             if otherdiv is not None:
                 obs = otherdiv.obs
                 if obs is not None:
-                    pass
-                    loop = asyncio.get_event_loop()
-                    print(loop.run_until_complete(getAsync(url.getText(), obs)))
+                    urls = getUrls(url.getText())
+                    otherdiv.addNumImages(urls.__len__())
+                    asyncio.run(getAsync(urls, obs))
                 else:
                     messagebox.showerror("Error", "Obs no encontrado")
             else:
@@ -80,6 +70,7 @@ class DivSuperior(GeneralDivTab):
 class DivMedio(GeneralDivTab):
     __images: dict
     __obs = None
+    __maxNumEnlaces: float
 
     def __init__(self, parent, row: int = 0, col: int = 0):
         super().__init__("DivMedio", parent, row=row, col=col)
@@ -88,6 +79,7 @@ class DivMedio(GeneralDivTab):
 
         self.__images = {}
         self.__obs = ImageController(self)
+        self.__maxNumEnlaces = 0
 
         #self.addImage("caram", open("../CarameloRaro.png", 'rb').read())
         #self.addImage("wat", open("../MlsPy.png", 'rb').read())
@@ -102,6 +94,7 @@ class DivMedio(GeneralDivTab):
         self.__images.update({name: content})
         # lo guardo en la lista de imagenes a mostrar
         self.get("box").addElement(name)
+        self.addNewImageValue()
 
     def onclick(self, event):
         selection = event.widget.curselection()
@@ -119,6 +112,25 @@ class DivMedio(GeneralDivTab):
             GeneralPhoto("img", self, content, 0, 1, columnspan=3, rowspan=3, width=200, height=200)
         else:
             messagebox.showerror("Error", "Algo ha pasado al seleccionar imagen")
+
+    def addNumImages(self, num: int):
+        oldValue = self.__maxNumEnlaces
+        self.__maxNumEnlaces += num
+
+        bar = self.get("bar")
+        oldProgress: float = bar.getProgress()
+        if oldProgress != 0:
+            bar.setProgress((oldProgress * oldValue) / self.__maxNumEnlaces)
+
+        print("Values", oldValue, self.__maxNumEnlaces)
+
+    def addNewImageValue(self):
+        val = 100 / self.__maxNumEnlaces
+        if self.get("bar").getProgress() + val < 100:
+            self.get("bar").addProgress(val)
+        else:
+            self.get("bar").setProgress(99.99)
+        print("Add value", val, self.get("bar").getProgress())
 
     def setProgress(self, progress: int):
         bar = self.get("bar")
@@ -138,10 +150,9 @@ class ImageController(Observer):
         self.__parent = parent
 
     def on_next(self, result):
-        res = yield from result[1].read()
-        print(res)
+        #print(result)
         #print("Recibido:", result[0], result[1])
-        #self.__parent.addImage(result[0], result[1])
+        self.__parent.addImage(result[0], result[1])
 
     def on_error(self, error: Exception) -> None:
         print(error)

@@ -66,3 +66,24 @@ class UrlCntroller:
         elif url.startswith('/'):
             url = url[1:]
         return f"{root_url}{url}"
+
+    @staticmethod
+    def getOrUrl(url: str):
+        pos: int = 0
+        res: str
+        if url.__contains__("//"):
+            pos = 2
+        l = url.split("/")
+        res = l[pos]
+        return res
+
+    @staticmethod
+    def prepararUrl2(url: str, urlor: str):
+        result: str = "https:"
+        if url.startswith('//'):
+            result += url
+        elif url.startswith('/'):
+            result += f"//{urlor}{url}"
+        else:
+            result = url
+        return result

@@ -513,24 +513,30 @@ class GeneralProgressBar:
         self.__parent = parent
         self.__name = name
         self.__parent.addItem(self)
-        self.__bar = Progressbar(self.__parent.nucleo, orient=HORIZONTAL)
+        self.__bar = Progressbar(self.__parent.nucleo, orient=HORIZONTAL, maximum=100)
         self.__bar.grid(row=row, column=col, columnspan=columnspan, rowspan=rowspan, sticky=N+S+E+W)
 
     # region Funciones
     @property
-    def parent(self):
+    def parent(self) -> GeneralDivTab:
         return self.__parent
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.__name
 
     @property
     def nucleo(self):
         return self.__bar
 
-    def setProgress(self, prog: int):
+    def setProgress(self, prog: float) -> None:
+        self.__bar["value"] = prog
+
+    def addProgress(self, prog: float) -> None:
         self.__bar.step(prog)
+
+    def getProgress(self) -> float:
+        return self.__bar["value"]
 
     # endregion
 

@@ -383,7 +383,7 @@ if __name__ == '__main__':
     asyncio.run(main())"""
 
 
-def getUrls(u: str):
+"""def getUrls(u: str):
     dom, root = UrlCntroller.urlRootDom(u)
     r = get(u)
     urllist: list = findall("src=\"(.+?)\"", r.text)
@@ -433,6 +433,53 @@ async def main():
     urls, dom, root = getUrls("https://en.wikipedia.org/wiki/Set_(mathematics)/")
     async with aiohttp.ClientSession() as session:
         htmls = await fetch_all(session, urls, dom, root)
+        print(htmls)
+
+if __name__ == '__main__':
+    asyncio.run(main())"""
+
+
+def getUrls(u: str) -> list:
+    web = UrlCntroller.getOrUrl(u)
+    r = get(u)
+    urllist: list = []
+    urllist += (findall("src=\"(.+?)\"", r.text))
+
+    i: int = 0
+    while i < urllist.__len__():
+        if urllist[i].__contains__(".jpg") is False and urllist[i].__contains__(".png") is False:
+            del urllist[i]
+        else:
+            urllist[i] = UrlCntroller.prepararUrl2(urllist[i], web)
+            i += 1
+    return urllist
+
+
+async def fetch(session, url, urlob: Observer):
+    async with session.get(url) as response:
+        if response.status != 200:
+            response.raise_for_status()
+        return await response.content.read()
+
+
+async def fetch_all(session, urls, urlob: Observer):
+    tasks = []
+    for url in urls:
+        task = asyncio.create_task(fetch(session, url))
+        tasks.append(task)
+    results = await asyncio.gather(*tasks)
+    return results
+
+
+def main():
+    #urls = getUrls("https://en.wikipedia.org/wiki/Set_(mathematics)/")
+    urls = getUrls("https://www3.animeflv.net/")
+    #print(urls)
+    templist = urls[:3]
+    #print(templist)
+
+    async with aiohttp.ClientSession() as session:
+        htmls = await fetch_all(session, templist, None)
         print(htmls)
 
 if __name__ == '__main__':
