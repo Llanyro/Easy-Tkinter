@@ -1,12 +1,12 @@
 from guiclass import GeneralVentana, GeneralDivTab, GeneralButton, GeneralLabel, GeneralEntradaTexto, GeneralPhoto, \
     GeneralProgressBar, GeneralListBox, messagebox
 from extralib import UrlCntroller
-import aiohttp
-import asyncio
 from requests import get
 from re import findall
 from rx.core import Observer
 from rx import from_list
+from aiohttp import ClientSession
+from asyncio import run, create_task, gather
 
 
 def getUrls(u: str) -> list:
@@ -26,20 +26,19 @@ def getUrls(u: str) -> list:
 
 
 async def func(url: str, urlob: Observer) -> None:
-    async with aiohttp.ClientSession() as session:
+    async with ClientSession() as session:
         async with session.get(url) as resp:
             result = await resp.content.read()
             if result is not None:
-                print(url)
                 from_list([(url, result)]).subscribe(urlob)
 
 
 async def getAsync(urls: list, urlob: Observer) -> None:
     tasks = []
     for url in urls:
-        task = asyncio.create_task(func(url, urlob))
+        task = create_task(func(url, urlob))
         tasks.append(task)
-    await asyncio.gather(*tasks)
+    await gather(*tasks)
 
 
 class DivSuperior(GeneralDivTab):
@@ -59,8 +58,9 @@ class DivSuperior(GeneralDivTab):
                 obs = otherdiv.obs
                 if obs is not None:
                     urls = getUrls(url.getText())
+                    # print(urls)
                     otherdiv.addNumImages(urls.__len__())
-                    asyncio.run(getAsync(urls, obs))
+                    run(getAsync(urls, obs))
                 else:
                     messagebox.showerror("Error", "Obs no encontrado")
             else:
@@ -172,5 +172,6 @@ class MainVentana(GeneralVentana):
         self.nucleo.destroy()
 
 
-v = MainVentana("Web Analysis GUI")
-v.start()
+if __name__ == '__main__':
+    v = MainVentana("Practica 1")
+    v.start()
