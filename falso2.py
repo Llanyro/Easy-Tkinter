@@ -31,7 +31,7 @@ class MainMenu(GeneralMenuBar):
 class DivSuperior(GeneralDivTab):
     def __init__(self, parent, row: int = 0, col: int = 0):
         super().__init__("DivSuperior", parent, row=row, col=col)
-        GeneralLabel("Label", self, "URL a procesar: ", 0, 0)
+        GeneralLabel("Label", self, "Introduce un texto de prueba a mostrar: ", 0, 0)
         GeneralEntradaTexto("url", self, 0, 1)
         GeneralButton("Buscar!", self, 0, 2, command=self.getURLContent)
 

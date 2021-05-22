@@ -196,7 +196,7 @@ class GeneralDivTab:
             self.__object_list.append({self.__dict_keys[0]: "text_insert", self.__dict_keys[1]: item})
         elif type(item) == GeneralCombox or issubclass(item.__class__, GeneralCombox):
             self.__object_list.append({self.__dict_keys[0]: "box", self.__dict_keys[1]: item})
-        elif type(item) == GeneralCombox or issubclass(item.__class__, GeneralCheckBox):
+        elif type(item) == GeneralCheckBox or issubclass(item.__class__, GeneralCheckBox):
             self.__object_list.append({self.__dict_keys[0]: "check_box", self.__dict_keys[1]: item})
         elif type(item) == GeneralNotebook or issubclass(item.__class__, GeneralNotebook):
             self.__object_list.append({self.__dict_keys[0]: "notebook", self.__dict_keys[1]: item})
